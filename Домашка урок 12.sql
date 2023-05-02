@@ -1,225 +1,317 @@
+DROP DATABASE IF EXISTS online_shop;
+CREATE DATABASE online_shop;
+
+USE online_shop;
+
 CREATE TABLE customers (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(255),
-  email VARCHAR(255),
-  password VARCHAR(255),
-  address VARCHAR(255),
-  phone VARCHAR(20)
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL COMMENT 'Имя пользователя',
+  email VARCHAR(255) NOT NULL COMMENT 'Электронная почта',
+  password_hash VARCHAR(100) NOT NULL COMMENT 'Хеш-код пароля',
+  phone VARCHAR(20) COMMENT 'Номер телефона'
+);
+
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL COMMENT 'Название товара',
+  description TEXT NOT NULL COMMENT 'Описание товара',
+  image VARCHAR(255) COMMENT 'URL к картинке'
+);
+
+CREATE TABLE warehouse (
+  id SERIAL PRIMARY KEY,
+  product_id BIGINT UNSIGNED NOT NULL COMMENT 'Id товара',
+  quantity INT NOT NULL COMMENT 'Количество на остатке',
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE TABLE product_price (
+  id SERIAL PRIMARY KEY,
+  product_id BIGINT UNSIGNED NOT NULL COMMENT 'Id товара',
+  price DECIMAL(10, 2) NOT NULL COMMENT 'Цена со скидкой',
+  base_price DECIMAL(10, 2) COMMENT 'Цена без скидки (может не быть)',
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE TABLE shopping_cart (
+  id SERIAL PRIMARY KEY,
+  customer_id BIGINT UNSIGNED NOT NULL COMMENT 'Id пользователя',
+  updated_date DATETIME NOT NULL COMMENT 'Время последнего обновления',
+  total_quantity INT NOT NULL COMMENT 'Общее количество товаров в корзине',
+  FOREIGN KEY (customer_id) REFERENCES customers(id)
+); 
+
+CREATE TABLE cart_items (
+  id SERIAL PRIMARY KEY,
+  cart_id BIGINT UNSIGNED NOT NULL COMMENT 'Id корзины',
+  product_id BIGINT UNSIGNED NOT NULL COMMENT 'Id товара',
+  quantity INT NOT NULL COMMENT 'Количество товаров в позиции',
+  FOREIGN KEY (cart_id) REFERENCES shopping_cart(id),
+  FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
 CREATE TABLE orders (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  customer_id INT,
-  order_date DATETIME,
-  total_price DECIMAL(10, 2),
+  id SERIAL PRIMARY KEY,
+  customer_id BIGINT UNSIGNED NOT NULL COMMENT 'Id пользователя',
+  order_date DATETIME NOT NULL COMMENT 'Дата совершения заказа',
+  total_price DECIMAL(10, 2) NOT NULL COMMENT 'Общая сумма заказа',
   FOREIGN KEY (customer_id) REFERENCES customers(id)
 );
 
 CREATE TABLE order_items (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  order_id INT,
-  product_id INT,
-  quantity INT,
-  price DECIMAL(10, 2),
+  id SERIAL PRIMARY KEY,
+  order_id BIGINT UNSIGNED NOT NULL COMMENT 'Id заказа',
+  product_id BIGINT UNSIGNED NOT NULL COMMENT 'Id товара',
+  quantity INT NOT NULL COMMENT 'Количество товаров в позиции',
+  price DECIMAL(10, 2) NOT NULL COMMENT 'Цена единицы товара в позиции',
   FOREIGN KEY (order_id) REFERENCES orders(id),
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
-CREATE TABLE products (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(255),
-  description TEXT,
-  price DECIMAL(10, 2),
-  image VARCHAR(255),
-  quantity INT
-);
-
 CREATE TABLE categories (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(255)
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL COMMENT 'Название категории',
+  order_number INT NOT NULL COMMENT 'Порядковый номер категории'
 );
 
 CREATE TABLE product_categories (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  product_id INT,
-  category_id INT,
+  id SERIAL PRIMARY KEY,
+  product_id BIGINT UNSIGNED NOT NULL COMMENT 'Id товара',
+  category_id BIGINT UNSIGNED NOT NULL COMMENT 'Id категории',
   FOREIGN KEY (product_id) REFERENCES products(id),
   FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
-CREATE TABLE product_prices (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  product_id INT,
-  price DECIMAL(10, 2),
-  series VARCHAR(255),
-  FOREIGN KEY (product_id) REFERENCES products(id)
-);
-
-CREATE PROCEDURE sp_create_customer (
-  IN p_name VARCHAR(255),
-  IN p_email VARCHAR(255),
-  IN p_password VARCHAR(255),
-  IN p_address VARCHAR(255),
-  IN p_phone VARCHAR(20)
-)
-BEGIN
-  INSERT INTO customers (name, email, password, address, phone)
-  VALUES (p_name, p_email, p_password, p_address, p_phone);
-END;
-
-CREATE PROCEDURE sp_create_order (
-  IN p_customer_id INT,
-  IN p_order_date DATETIME,
-  IN p_total_price DECIMAL(10, 2)
-)
-BEGIN
-  INSERT INTO orders (customer_id, order_date, total_price)
-  VALUES (p_customer_id, p_order_date, p_total_price);
-END;
-
-CREATE PROCEDURE sp_create_order_item (
-  IN p_order_id INT,
-  IN p_product_id INT,
-  IN p_quantity INT,
-  IN p_price DECIMAL(10, 2)
-)
-BEGIN
-  INSERT INTO order_items (order_id, product_id, quantity, price)
-  VALUES (p_order_id, p_product_id, p_quantity, p_price);
-END;
-
-CREATE PROCEDURE sp_create_product (
-  IN p_name VARCHAR(255),
-  IN p_description TEXT,
-  IN p_price DECIMAL(10, 2),
-  IN p_image VARCHAR(255),
-  IN p_quantity INT
-)
-BEGIN
-  INSERT INTO products (name, description, price, image, quantity)
-  VALUES (p_name, p_description, p_price, p_image, p_quantity);
-END;
-
-CREATE PROCEDURE sp_create_category (
-  IN p_name VARCHAR(255)
-)
-BEGIN
-  INSERT INTO categories (name)
-  VALUES (p_name);
-END;
-
-CREATE PROCEDURE sp_add_product_to_category (
-  IN p_product_id INT,
-  IN p_category_id INT
-)
-BEGIN
-  INSERT INTO product_categories (product_id, category_id)
-  VALUES (p_product_id, p_category_id);
-END;
-
-CREATE PROCEDURE sp_create_product_price (
-  IN p_product_id INT,
-  IN p_price DECIMAL(10, 2),
-  IN p_series VARCHAR(255)
-)
-BEGIN
-  INSERT INTO product_prices (product_id, price, series)
-  VALUES (p_product_id, p_price, p_series);
-END;
-
-
--- Insert test customers
-INSERT INTO customers (name, email, password, address, phone)
+-- наполняем БД данными
+-- customers
+INSERT INTO customers (name, email, password_hash, phone)
 VALUES
-  ('John Doe', 'johndoe@example.com', 'password123', '123 Main St', '555-1234'),
-  ('Jane Smith', 'janesmith@example.com', 'password456', '456 Oak St', '555-5678'),
-  ('Bob Johnson', 'bobjohnson@example.com', 'password789', '789 Maple St', '555-9012');
+  ('Иванов Петр', 'ivanov@mail.ru', '34553424SDE34', '+79023454444'),
+  ('Свиридова Сетлана', 'sviridsvet@example.ru', 'DFGY345HFD6DFG', '8-906-435-8473'),
+  ('Серпантинов А', 'serp@gmail.com', 'FG4656456GFHDF', NULL);
 
--- Insert test products
-INSERT INTO products (name, description, price, image, quantity)
+-- products
+INSERT INTO products (name, description, image)
 VALUES
-  ('Product 1', 'Description of product 1', 10.99, 'product1.jpg', 100),
-  ('Product 2', 'Description of product 2', 19.99, 'product2.jpg', 50),
-  ('Product 3', 'Description of product 3', 5.99, 'product3.jpg', 200);
+  ('Конструктор магнитный', 'Откройте с ребенком увлекательный мир грузовых и гоночных машин вместе с Pengo TRANSPORT.', '2344243.jpg'),
+  ('Сухой бассейн', 'Использовать на мелководье под присмотром взрослых. ', 'product2.jpg'),
+  ('Спортивный костюм FACTURIA', 'Стильный женский костюм от бренда Facturia', NULL);
 
--- Insert test categories
-INSERT INTO categories (name)
+-- categories
+INSERT INTO categories (name, order_number)
 VALUES
-  ('Category 1'),
-  ('Category 2'),
-  ('Category 3');
+  ('Конструкторы', 20),
+  ('Одежда и обувь', 1),
+  ('Детские товары', 10);
 
 -- Add products to categories
 INSERT INTO product_categories (product_id, category_id)
 VALUES
   (1, 1),
-  (1, 2),
-  (2, 2),
-  (3, 3);
+  (1, 3),
+  (2, 3),
+  (3, 2);
 
--- Insert test product prices
-INSERT INTO product_prices (product_id, price, series)
+-- product price
+INSERT INTO product_price (product_id, price, base_price)
 VALUES
-  (1, 1010.99, 'Series A'),
-  (1, 109.99, 'Series B'),
-  (2, 19.99, 'Series A'),
-  (3, 505.99, 'Series A');
+  (1, 2876, 5659),
+  (2, 1779, 2560),
+  (3, 2490, 3700);
 
--- Insert test orders
-INSERT INTO orders (customer_id, order_date, total_price)
+-- warehouse
+INSERT INTO warehouse (product_id, quantity)
 VALUES
-  (1, '2021-01-01 10:00:00', 10.99),
-  (2, '2021-01-02 11:00:00', 39.98),
-  (3, '2021-01-03 12:00:00', 5.99);
-
--- Insert test order items
-INSERT INTO order_items (order_id, product_id, quantity, price)
-VALUES
-  (1, 1, 1, 10.99),
-  (2, 1, 2, 9.99),
-  (2, 2, 1, 19.99),
-  (3, 3, 1, 5.99);
-
-CALL sp_create_customer('John Smith', 'johnsmith@example.com', 'password123', '456 Elm St', '555-1234');
-CALL sp_create_customer('Jane Smith', 'janesmith@example.com', 'password456', '456 Oak St', '555-5678'),
-CALL sp_create_customer('Bob Johnson', 'bobjohnson@example.com', 'password789', '789 Maple St', '555-9012');
-
-CALL sp_create_order(1, '2021-01-04 13:00:00', 29.98);
-
-CALL sp_create_order_item(1, 2, 1, 19.99);    
-
-CALL sp_create_product('Product 4', 'Description of product 4', 7.99, 'product4.jpg', 150);
-
-CALL sp_create_product('Product 4', 'Description of product 4', 7.99, 'product4.jpg', 150);
-
-CALL sp_create_category('Category 4');
-
-CALL sp_create_category('Category 4');
-
-CALL sp_add_product_to_category(4, 4);
-
-CALL sp_create_product_price(4, 7.99, 'Series A');
-
+  (1, 234),
+  (2, 10),
+  (3, 2);
+  
+ 
 CREATE VIEW orders_with_customer_info AS
-SELECT o.id AS order_id, o.order_date, o.total_price, c.name AS customer_name, c.email, c.address, c.phone
+SELECT o.id AS order_id, 
+       o.order_date, 
+       o.total_price, 
+       c.name AS customer_name, 
+       c.email, 
+       c.phone
 FROM orders o
 JOIN customers c ON o.customer_id = c.id;
 
 CREATE VIEW products_with_categories AS
-SELECT p.id AS product_id, p.name AS product_name, p.description, p.price, p.image, p.quantity, c.name AS category_name
+SELECT p.id AS product_id, 
+	   p.name AS product_name, 
+	   p.description,
+	   pr.price, 
+	   pr.base_price, 
+	   p.image, 
+	   w.quantity, 
+	   c.name AS category_name
 FROM products p
+JOIN product_price pr ON pr.product_id = p.id
+JOIN warehouse w ON w.product_id = p.id
 JOIN product_categories pc ON p.id = pc.product_id
 JOIN categories c ON pc.category_id = c.id;
 
 CREATE VIEW revenue_by_month AS
-SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month, SUM(o.total_price) AS revenue
+SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month, 
+       SUM(o.total_price) AS revenue
 FROM orders o
 GROUP BY month;
 
 CREATE VIEW top_5_products AS
-SELECT p.name AS product_name, SUM(oi.quantity) AS total_quantity_sold
+SELECT p.name AS product_name, 
+       SUM(oi.quantity) AS total_quantity_sold
 FROM products p
 JOIN order_items oi ON p.id = oi.product_id
 GROUP BY p.id
 ORDER BY total_quantity_sold DESC
 LIMIT 5;
+
+-- stored procudures
+DELIMITER //
+
+CREATE PROCEDURE add_to_cart(
+    IN p_customer_id BIGINT UNSIGNED,
+    IN p_product_id BIGINT UNSIGNED,
+    IN p_quantity INT
+)
+BEGIN
+    DECLARE customer_cart_id BIGINT UNSIGNED;
+    DECLARE existing_quantity INT;
+    DECLARE new_quantity INT;
+    DECLARE warehouse_quantity INT;
+    DECLARE total INT;
+
+    START TRANSACTION;
+
+    INSERT INTO shopping_cart (customer_id, updated_date, total_quantity)
+      SELECT id, NOW(), 0 
+      FROM customers 
+      WHERE id = p_customer_id
+        AND NOT EXISTS (SELECT * FROM shopping_cart 
+                        WHERE customer_id = p_customer_id);
+
+    SELECT id INTO customer_cart_id FROM shopping_cart WHERE customer_id = p_customer_id;                   
+                      
+    -- Проверить есть ли этот продукт уже в корзине
+    SELECT quantity INTO existing_quantity 
+    FROM cart_items
+    WHERE cart_id = customer_cart_id
+      AND product_id = p_product_id;
+     
+    SELECT COALESCE(quantity, 0) INTO warehouse_quantity
+    FROM warehouse 
+    WHERE product_id = p_product_id;
+  
+    IF existing_quantity IS NOT NULL THEN
+        -- Обновляем количество в существующей строчке
+        SET new_quantity = existing_quantity + p_quantity;
+        IF new_quantity > warehouse_quantity THEN
+        	SET new_quantity = warehouse_quantity;
+        END IF;
+       
+        UPDATE cart_items 
+        SET quantity = new_quantity 
+        WHERE cart_id = customer_cart_id 
+          AND product_id = p_product_id;
+    ELSE
+        -- Добавляем новую строчку в корзину
+        SET new_quantity = p_quantity;
+        IF new_quantity > warehouse_quantity THEN
+        	SET new_quantity = warehouse_quantity;
+        END IF;
+       
+        INSERT INTO cart_items (cart_id, product_id, quantity) 
+        VALUES (customer_cart_id, p_product_id, new_quantity);
+    END IF;
+  
+
+    -- обновляем кол-во товара в корзине
+    SELECT SUM(ci.quantity) INTO total 
+    FROM cart_items ci 
+    WHERE ci.cart_id = customer_cart_id;
+   
+    UPDATE shopping_cart
+    SET updated_date = NOW(),
+        total_quantity = total
+    WHERE id = customer_cart_id;
+   
+    COMMIT;
+END //
+
+DELIMITER ;
+
+
+DELIMITER //
+CREATE PROCEDURE create_order(
+    IN p_cart_id BIGINT UNSIGNED
+)
+BEGIN
+    DECLARE total_price DECIMAL(10, 2);
+    DECLARE order_id BIGINT UNSIGNED;
+    DECLARE product_id BIGINT UNSIGNED;
+    DECLARE cust_id BIGINT UNSIGNED;
+    DECLARE quantity INT;
+    DECLARE price DECIMAL(10, 2);
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE cur CURSOR FOR
+      SELECT ci.product_id, ci.quantity, pp.price 
+      FROM cart_items ci 
+      JOIN product_price pp ON ci.product_id = pp.product_id
+      WHERE ci.cart_id = cart_id;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+    START TRANSACTION;
+
+    SELECT customer_id INTO cust_id
+    FROM shopping_cart
+    WHERE id = p_cart_id;
+   
+    -- Вычисляем общую стоимость заказа
+    SELECT SUM(ci.quantity * pp.price) INTO total_price 
+    FROM cart_items ci 
+    JOIN product_price pp ON ci.product_id = pp.product_id 
+    WHERE ci.cart_id = p_cart_id;
+
+    INSERT INTO orders (customer_id, order_date, total_price) 
+    VALUES (cust_id, NOW(), total_price);
+   
+    SET order_id = LAST_INSERT_ID();
+
+    OPEN cur;
+    read_loop: LOOP
+        FETCH cur INTO product_id, quantity, price;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        INSERT INTO order_items (order_id, product_id, quantity, price) 
+        VALUES (order_id, product_id, quantity, price);
+       
+        -- убираем заказ из остатков
+        UPDATE warehouse w
+        SET w.quantity = w.quantity - quantity
+        WHERE w.product_id = product_id;
+    END LOOP;
+    CLOSE cur;
+
+    DELETE FROM cart_items WHERE cart_id = p_cart_id;
+    DELETE FROM shopping_cart WHERE id = p_cart_id;
+   
+   
+    COMMIT;
+END //
+
+DELIMITER ;
+
+call add_to_cart(1, 1, 10);
+
+-- т.к. на остатках только 10, он в корзину добавит только 10, а не 20
+call add_to_cart(1, 2, 20);
+
+SELECT * from shopping_cart;
+select * from cart_items;
+
+-- сделаем заказ, и убедимся, что остаток станет 0
+call create_order(1);
+
+select * from warehouse;

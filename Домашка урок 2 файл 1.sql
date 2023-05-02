@@ -1,0 +1,3 @@
+CREATE DATABASE example;
+SHOW DATABASES;
+USE example;
